@@ -65,12 +65,14 @@ zt_inphase_frame = zt .* exp(-j*phase); % Remove phase offset
 start_ind = offset + length(frame_sync);
 zt_inphase_frame = zt_inphase_frame(start_ind:end);
 
-
 %% Equalization
-h0 = .2993;
+received_preamble = zt_inphase_frame(start_ind:start_ind+length(preamble)-1);
+channel_effect = received_preamble./preamble;
+h0=mean(channel_effect);
+% h0=0.2993;
 zt_inphase_frame = zt_inphase_frame./h0;
-%% Plotting Results
 
+%% Plotting Results
 xt = zt_inphase_frame;
 len = length(xt);
 % Plot time domain signal
