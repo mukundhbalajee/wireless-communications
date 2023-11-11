@@ -1,13 +1,33 @@
 %% Setup
 clear; clc; close all;
-load receivedsignal.mat
+
+sync_len = 1; % microseconds
+fs = 200; %MHz
+upsampling_rate = 20;
+
+% freq_sync = ones(1, fs*sync_len/upsampling_rate); %2 us of frame sync for the receiver to get PLL lock
+% t_sync = floor(2.*rand(1, fs*sync_len/upsampling_rate)).* 2 -1; %Pseudo-random BPSK
+% frame_sync = floor(2.*rand(1, fs*sync_len/upsampling_rate)).* 2 -1; %Pseudo-random BPSK
+load freq_sync;
+load t_sync.mat;
+load frame_sync.mat;
+
+preamble = horzcat(freq_sync, t_sync, frame_sync);
+impulse = horzcat(zeros(1, 100), 1, zeros(1, 100));
+sine = horzcat(zeros(1, 100), sin(2*pi*5e6.*linspace(0, 50e-6, 500)), zeros(1, 100));
+square = horzcat(zeros(1, 100), ones(1, 100), zeros(1, 100));
+test_sig = horzcat(preamble, impulse, zeros(1,40), sine, zeros(1, 40), square);
+test_sig = upsample(test_sig, upsampling_rate);
+
 data = imread('images/shannon1440.bmp');
 dims = size(data);
 bits = reshape(data, dims(1)*dims(2), 1);
 bits = bits .* 2 -1; %BPSK
-bits_up = upsample(bits, 20);
-pulse = rcosdesign(0.5, 7, 20, 'sqrt');
-transmitsignal = conv(bits_up, pulse);
+bits = horzcat(preamble, bits');
+bits_up = upsample(bits, upsampling_rate);
+pulse = rcosdesign(0.5, 7, upsampling_rate, 'sqrt');
+
+transmitsignal = conv(test_sig, pulse);
 save("transmitsignal.mat", "transmitsignal");
 time = length(transmitsignal)/200; %In microseconds
 
@@ -46,6 +66,7 @@ yline(-20, 'red');
 yline(-40, 'black');
 
 %% Received
+load receivedsignal.mat
 xt = receivedsignal;
 len = length(xt);
 
