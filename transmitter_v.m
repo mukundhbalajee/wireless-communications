@@ -66,7 +66,7 @@ yline(-20, 'red');
 yline(-40, 'black');
 
 %% Received
-load receivedsignal.mat
+load receivedsignal_test_cases.mat
 xt = receivedsignal;
 len = length(xt);
 
