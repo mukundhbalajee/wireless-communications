@@ -58,12 +58,22 @@ for i = 1:tau-p*upsampling_rate-1
     end
 end
 
-[pks,locs] = findpeaks(abs(sums), 'MinPeakProminence', 10);
+[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
+maxes = maxk(pks, num_frames);
+
+locs = zeros(1, num_frames);
+
+for i = 1:num_frames
+    locs(i) = find(abs(sums) == maxes(i));
+end
+
+locs = sort(locs);
+
 phases = zeros(1, num_frames);
 starts = zeros(1, num_frames);
 for i = 1:4
    phases(i) = angle(sums(locs(i)));
-   starts(i) = locs(i) + upsampling_rate*(length(frame_sync)+1);
+   starts(i) = locs(i) + upsampling_rate*(length(frame_sync)+.55);
 end
 
 %% Equalization
@@ -100,10 +110,12 @@ data2 = bits(401:800);
 data3 = bits(801:1200);
 data4 = bits(1201:min(length(bits), 1600));
 
-BER1 = length(find(rx_ipts1(1:400) ~= data1'))/length(data1)
-BER2 = length(find(rx_ipts2(1:400) ~= data2'))/length(data2)
-BER3 = length(find(rx_ipts3(1:400) ~= data3'))/length(data3)
-BER4 = length(find(rx_ipts4(1:240) ~= data4'))/length(data4)
+BER1 = length(find(rx_ipts1(1:400) ~= data1'))/length(data1);
+BER2 = length(find(rx_ipts2(1:400) ~= data2'))/length(data2);
+BER3 = length(find(rx_ipts3(1:400) ~= data3'))/length(data3);
+BER4 = length(find(rx_ipts4(1:240) ~= data4'))/length(data4);
+
+BER = ((BER1+BER2+BER3)*400+BER4*240)/1440
 
 %% Plotting
 
