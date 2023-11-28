@@ -1,6 +1,5 @@
 clear; close all; clc;
 load freq_sync;
-load qam_bits;
 load t_sync.mat;
 load frame_sync.mat;
 load receivedsignal.mat;
@@ -55,7 +54,7 @@ zt_inphase_timing_plot = zt_inphase_timing;
 %% Frame Synchronization
 
 sig_to_find = frame_sync;  %PUT SIGNAL TO FIND HERE
-num_frames = 10;
+num_frames = 4;
 xt_conj = conj(sig_to_find);
 
 tau = length(zt_inphase_timing);
@@ -99,41 +98,30 @@ frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sy
 frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(2));
 frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(3));
 frame4 = zt_inphase_timing(starts(4): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(4));
-frame5 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(5));
-frame6 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(6));
-frame7 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(7));
-frame8 = zt_inphase_timing(starts(4): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(8));
-frame9 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(9));
-frame10 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(10));
 
 zk1 = frame1(1:upsampling_rate:length(frame1));
 zk2 = frame2(1:upsampling_rate:length(frame2));
 zk3 = frame3(1:upsampling_rate:length(frame3));
 zk4 = frame4(1:upsampling_rate:length(frame4));
-zk5 = frame1(1:upsampling_rate:length(frame5));
-zk6= frame2(1:upsampling_rate:length(frame6));
-zk7 = frame3(1:upsampling_rate:length(frame7));
-zk8 = frame4(1:upsampling_rate:length(frame8));
-zk9 = frame1(1:upsampling_rate:length(frame9));
-zk10 = frame2(1:upsampling_rate:length(frame10));
 
-zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10;];
+zk = [zk1; zk2; zk3; zk4];
 len = length(zk);
 
 % Find the closest symbol in the constellation for each sample
 rx_symbols = zeros(1,len*b);
 
 for i = 1:len
-    [~, index] = min(abs(zk(i) - options(:)));
+    [~, index] = min(abs(zk(i) - options));
+    indexsiz
     rx_symbols(((i-1)*4) + 1 : i*4) = de2bi(index-1, 4, 'left-msb');
 end
 
 
-% % Guessing
-% rx_ipts1 = sign(real(zk1));
-% rx_ipts2 = sign(real(zk2));
-% rx_ipts3 = sign(real(zk7));
-% rx_ipts4 = sign(real(zk4));
+% Guessing
+rx_ipts1 = sign(real(zk1));
+rx_ipts2 = sign(real(zk2));
+rx_ipts3 = sign(real(zk3));
+rx_ipts4 = sign(real(zk4));
 
 %Error checking and BER calculation
 data = imread('images/shannon1440.bmp');
@@ -145,13 +133,12 @@ data2 = bits(401:800);
 data3 = bits(801:1200);
 data4 = bits(1201:min(length(bits), 1600));
 
-% BER1 = length(find(rx_ipts1(1:400) ~= data1'))/length(data1);
-% BER2 = length(find(rx_ipts2(1:400) ~= data2'))/length(data2);
-% BER3 = length(find(rx_ipts3(1:400) ~= data3'))/length(data3);
-% BER4 = length(find(rx_ipts4(1:240) ~= data4'))/length(data4);
-BER = length(find(rx_symbols(1:400) ~= qam_bits'))/length(qam_bits)
+BER1 = length(find(rx_ipts1(1:400) ~= data1'))/length(data1);
+BER2 = length(find(rx_ipts2(1:400) ~= data2'))/length(data2);
+BER3 = length(find(rx_ipts3(1:400) ~= data3'))/length(data3);
+BER4 = length(find(rx_ipts4(1:240) ~= data4'))/length(data4);
 
-% BER = ((BER1+BER2+BER3)*400+BER4*240)/1440
+BER = ((BER1+BER2+BER3)*400+BER4*240)/1440
 
 %% Plotting
 
@@ -317,7 +304,7 @@ axis tight
 
 %% Equalizer sample output - v_k
 
-vk = [zk1; zk2; zk7; zk4];
+vk = [zk1; zk2; zk3; zk4];
 vk = vk(1:1500);
 len = length(vk);
 samples=[0:len-1];
