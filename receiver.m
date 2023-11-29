@@ -88,10 +88,27 @@ for i = 1:4
 end
 
 %% Equalization
-received_preamble = zt_inphase_timing(1:upsampling_rate:length(preamble)*upsampling_rate);
-channel_effect = abs(received_preamble)'./abs(preamble);
-h0=mean(abs(channel_effect));
-zt_inphase_timing = zt_inphase_timing./h0;
+%% Equalization
+num_frames = 10;
+frame_length = length(zt_inphase_timing) / num_frames;
+eq = zeros(1, length(zt_inphase_timing));
+ 
+for frame = 1:num_frames
+    % Find Pilot
+    frame_start = (frame - 1) * frame_length + 1;
+    frame_end = frame * frame_length;
+    [corrs, lags] = xcorr(zt_inphase_timing(frame_start:frame_end), frame_sync);
+    [~, I] = max(abs(corrs));
+    delta = lags(I);
+ 
+    % MMSE-LE Equalization
+    p = zt_inphase_timing(frame_start + delta + 1: frame_start + delta + length(frame_sync));
+    ps = 2 * frame_sync - 1;
+    eq(frame_start:frame_end) = (ps .* conj(p)') / (ps .* p');
+end
+ 
+zt_inphase_timing = zt_inphase_timing./eq';
+
 
 %% Sampling
 % zk = zt_inphase_frame(1:upsampling_rate:length(zt_inphase_frame));
@@ -99,25 +116,14 @@ frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sy
 frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(2));
 frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(3));
 frame4 = zt_inphase_timing(starts(4): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(4));
-frame5 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(5));
-frame6 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(6));
-frame7 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(7));
-frame8 = zt_inphase_timing(starts(4): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(8));
-frame9 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(9));
-frame10 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(10));
+
 
 zk1 = frame1(1:upsampling_rate:length(frame1));
 zk2 = frame2(1:upsampling_rate:length(frame2));
 zk3 = frame3(1:upsampling_rate:length(frame3));
 zk4 = frame4(1:upsampling_rate:length(frame4));
-zk5 = frame1(1:upsampling_rate:length(frame5));
-zk6= frame2(1:upsampling_rate:length(frame6));
-zk7 = frame3(1:upsampling_rate:length(frame7));
-zk8 = frame4(1:upsampling_rate:length(frame8));
-zk9 = frame1(1:upsampling_rate:length(frame9));
-zk10 = frame2(1:upsampling_rate:length(frame10));
 
-zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10;];
+zk = [zk1; zk2; zk3; zk4 ];
 len = length(zk);
 
 % Find the closest symbol in the constellation for each sample
@@ -129,11 +135,11 @@ for i = 1:len
 end
 
 
-% % Guessing
-% rx_ipts1 = sign(real(zk1));
-% rx_ipts2 = sign(real(zk2));
-% rx_ipts3 = sign(real(zk7));
-% rx_ipts4 = sign(real(zk4));
+% Guessing
+rx_ipts1 = sign(real(zk1));
+rx_ipts2 = sign(real(zk2));
+rx_ipts3 = sign(real(zk7));
+rx_ipts4 = sign(real(zk4));
 
 %Error checking and BER calculation
 data = imread('images/shannon1440.bmp');
