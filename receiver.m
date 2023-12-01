@@ -1,40 +1,20 @@
 clear; close all; clc;
-load freq_sync;
-load qam_bits;
-load t_sync.mat;
-load frame_sync.mat;
 load receivedsignal.mat;
 load transmitsignal.mat;
-load bits.mat
+load qam_pre.mat
+load qam_fsync.mat
 
-sigman = 0.2;
+preamble = qam_preamble;
+frame_sync = qam_frame_sync;
 
-transmitsignalwithdelay = [zeros(1, 2147), transmitsignal];
-receivedsignal = exp(j*pi/6) * transmitsignalwithdelay + sigman/sqrt(2) * (randn(size(transmitsignalwithdelay))+j*randn(size(transmitsignalwithdelay)));
-receivedsignal=receivedsignal';
-
-sync_len = 1; % microseconds
+sync_len = 24; % microseconds
 fs = 200; %MHz
-M = 16;
-b=log2(M);
 upsampling_rate = 12;
-pulse = rcosdesign(0.9, 30, upsampling_rate, 'sqrt');
+pulse = rcosdesign(0.3, 30, upsampling_rate, 'sqrt');
 
-%16-QAM constellation
-d = sqrt(2)/3;
-options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
-           1.5+0.5j, 0.5+0.5j, -1.5+0.5j, -0.5+0.5j
-           1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
-           1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
-
-preamble = horzcat(freq_sync, t_sync, frame_sync);
-impulse = horzcat(zeros(1, 100), 1, zeros(1, 100));
-sine = horzcat(zeros(1, 100), sin(2*pi*5e6.*linspace(0, 50e-6, 500)), zeros(1, 100));
-square = horzcat(zeros(1, 100), ones(1, 100), zeros(1, 100));
-
-%% Filter
+%% Demodulate
 wt = fliplr(pulse); %probably unnecessary
-zt = conv(receivedsignal, wt);
+zt = conv(wt, receivedsignal);
 
 %% Timing Synchronization
 
@@ -89,9 +69,9 @@ locs = sort(locs);
 
 phases = zeros(1, num_frames);
 starts = zeros(1, num_frames);
-for i = 1:num_frames
+for i = 1:length(inds)
    phases(i) = angle(sums(locs(i)));
-   starts(i) = locs(i) + upsampling_rate*((length(frame_sync)/b)+.55);
+   starts(i) = locs(i) + upsampling_rate*(length(frame_sync)+1);
 end
 
 %% Equalization
@@ -102,33 +82,16 @@ zt_inphase_timing = zt_inphase_timing./h0;
 
 %% Sampling
 % zk = zt_inphase_frame(1:upsampling_rate:length(zt_inphase_frame));
-% num_frames = 10;
-% 
-% frames = zeros( num_frames);
-% for i = 1:num_frames
-%     i
-%     frames(i) = zt_inphase_timing(starts(i): starts(i+1)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(i));
-% end
-% 
-% zks = zeros(1, num_frames);
-% for i = 1:num_frames
-%     zks(i) = zt_inphase_timing(starts(i): starts(i+1)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(i));
-% end
-% 
-% z_demod = qamdemod(zks, M);
-% 
-
-
-frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(1));
-frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(2));
-frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(3));
-frame4 = zt_inphase_timing(starts(4): starts(5)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(4));
-frame5 = zt_inphase_timing(starts(5): starts(6)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(5));
-frame6 = zt_inphase_timing(starts(6): starts(7)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(6));
-frame7 = zt_inphase_timing(starts(7): starts(8)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(7));
-frame8 = zt_inphase_timing(starts(8): starts(9)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(8));
-frame9 = zt_inphase_timing(starts(9): starts(10)-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(9));
-frame10 = zt_inphase_timing(starts(10): end-1-upsampling_rate*(length(frame_sync)/b)).* exp(-j*phases(10));
+frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(1));
+frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(2));
+frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(3));
+frame4 = zt_inphase_timing(starts(4): starts(5)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(4));
+frame5 = zt_inphase_timing(starts(5): starts(6)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(5));
+frame6 = zt_inphase_timing(starts(6): starts(7)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(6));
+frame7 = zt_inphase_timing(starts(7): starts(8)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(7));
+frame8 = zt_inphase_timing(starts(8): starts(9)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(8));
+frame9 = zt_inphase_timing(starts(9): starts(10)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(9));
+frame10 = zt_inphase_timing(starts(10): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(10));
 
 zk1 = frame1(1:upsampling_rate:length(frame1));
 zk2 = frame2(1:upsampling_rate:length(frame2));
@@ -141,60 +104,65 @@ zk8 = frame8(1:upsampling_rate:length(frame8));
 zk9 = frame9(1:upsampling_rate:length(frame9));
 zk10 = frame10(1:upsampling_rate:length(frame10));
 
-zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10; ];
+zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10];
+zk = transpose(zk);
 
-zk_demod = qamdemod(zk, M);
-len = length(zk_demod);
 
-% Find the closest symbol in the constellation for each sample
-rx_symbols = zeros(1,len*b);
+% Guessing
+d = sqrt(2)/3;
+options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
+           1.5+0.5j, 0.5+0.5j, -1.5+0.5j, -0.5+0.5j
+           1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
+           1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
 
-for i = 1:len
-    [~, index] = min(abs(zk_demod(i) - options(:)));
-    rx_symbols(((i-1)*b)+1: i*b) = de2bi(index-1,b);
+received_pts = zeros(1, length(zk)); %QAM
+
+min_pt = -1;
+min_distance = 10000;
+for i = 1:length(zk)
+    min_pt = -1;
+    min_distance = 10000;
+    for j = 1:16
+        refpoint = [real(options(j)), imag(options(j))];
+        point = [real(zk(i)), imag(zk(i))];
+        distance = sqrt((refpoint(1)-point(1))^2 + (refpoint(2)-point(2))^2);
+        if(distance < min_distance)
+            min_distance = distance;
+            min_pt = j;
+        end
+    end
+    received_pts(i) = min_pt-1;
 end
 
+% %QAM to Bits
+% rx_bits = dec2bin(received_pts);
+% rx_bits = string(rx_bits);
+% rx_bits = strjoin(rx_bits,'');
+% rx_bits = strsplit(rx_bits);
 
 
-%% BER
-message = imread("images/shannon1440.bmp");
-message_vec = reshape(message, 1, []);
+%Error checking and BER calculation
+image = imread('images/shannon20520.bmp');
+dims = size(image);
 
-bits = message_vec;
+bits = string(double(reshape(image, 4, dims(1)*dims(2)/4)));
 
-BER = mean(rx_symbols ~= bits)
-disp(['BER is ', num2str(BER)])
+qam_bits = strings(1, length(bits));
+for i = 1:length(bits)
+    qam_bits(i) = strjoin(bits(:,i),'');
+end
 
-% % Guessing
-% rx_ipts1 = sign(real(zk1));
-% rx_ipts2 = sign(real(zk2));
-% rx_ipts3 = sign(real(zk3));
-% rx_ipts4 = sign(real(zk4));
-% 
-% % Error checking and BER calculation
-% data = imread('images/shannon1440.bmp');
-% dims = size(data);
-% bits = reshape(data, 1, dims(1)*dims(2));
-% bits = bits .* 2 -1; %BPSK
-% data1 = bits(1:400);
-% data2 = bits(401:800);
-% data3 = bits(801:1200);
-% data4 = bits(1201:min(length(bits), 1600));
-% 
-% BER1 = length(find(rx_ipts1(1:400) ~= data1'))/length(data1);
-% BER2 = length(find(rx_ipts2(1:400) ~= data2'))/length(data2);
-% BER3 = length(find(rx_ipts3(1:400) ~= data3'))/length(data3);
-% BER4 = length(find(rx_ipts4(1:240) ~= data4'))/length(data4);
-% 
-% BER = ((BER1+BER2+BER3)*400+BER4*240)/1440
+qam_bits = bin2dec((qam_bits));
+N = length(qam_bits); %length(qam_bits);
+BER= length(find(received_pts(1:N) ~= qam_bits(1:N)))/N*100
 
 %% Plotting
 
-figure; imshow(message); title("original")
-
+% figure; imshow(data); title("original")
+% 
 % received_image = [rx_ipts1(1:400); rx_ipts2(1:400); rx_ipts3(1:400); rx_ipts4(1:240)];
 % received_image = reshape(received_image, 45, 32);
-figure; imshow(zk_demod); 
+% figure; imshow(received_image); 
 
 
 % %% Transmitted signal - x_base(t)
@@ -232,45 +200,45 @@ figure; imshow(zk_demod);
 % yline(-20, 'red');
 % yline(-40, 'black');
 % axis tight
-% 
-% %% Received Signal - y_base(t)
-% 
-% y_base_t = receivedsignal;
-% y_base_t = y_base_t(1:30000);
-% len = length(y_base_t);
-% t_microseconds=[0:len-1]/200e6*1e6;
-% 
-% figure(2)
-% LargeFigure(gcf, 0.15); % Make figure large
-% clf
-% 
-% % Plot time domain signal
-% subplot(2,1,1);
-% hold on;
-% plot(t_microseconds, real(y_base_t))
-% plot(t_microseconds, imag(y_base_t))
-% hold off;
-% title('Time Domain Plot for received signal, y_{base}(t)')
-% xlabel('t in microseconds')
-% ylabel('y^{base}(t)')
-% legend("real", "imag");
-% axis tight
-% 
-% % Plot frequency domain signal
-% subplot(2,1,2);
-% plot([-len/2+1:len/2]*200/len, 20*log10(abs(fftshift(1/sqrt(len)*fft(y_base_t)))))
-% xlabel('DTFT frequency f in MHz')
-% ylabel('|Y^{base}(f)| in dB')
-% title('Frequency Domain Plot for received signal, y_{base}(t)')
-% xline(11, 'red');
-% xline(-11, 'red');
-% xline(15, 'black');
-% xline(-15, 'black');
-% yline(-20, 'red');
-% yline(-40, 'black');
-% axis tight
-% 
-% 
+
+%% Received Signal - y_base(t)
+
+y_base_t = receivedsignal;
+y_base_t = y_base_t(1:30000);
+len = length(y_base_t);
+t_microseconds=[0:len-1]/200e6*1e6;
+
+figure(2)
+LargeFigure(gcf, 0.15); % Make figure large
+clf
+
+% Plot time domain signal
+subplot(2,1,1);
+hold on;
+plot(t_microseconds, real(y_base_t))
+plot(t_microseconds, imag(y_base_t))
+hold off;
+title('Time Domain Plot for received signal, y_{base}(t)')
+xlabel('t in microseconds')
+ylabel('y^{base}(t)')
+legend("real", "imag");
+axis tight
+
+% Plot frequency domain signal
+subplot(2,1,2);
+plot([-len/2+1:len/2]*200/len, 20*log10(abs(fftshift(1/sqrt(len)*fft(y_base_t)))))
+xlabel('DTFT frequency f in MHz')
+ylabel('|Y^{base}(f)| in dB')
+title('Frequency Domain Plot for received signal, y_{base}(t)')
+xline(11, 'red');
+xline(-11, 'red');
+xline(15, 'black');
+xline(-15, 'black');
+yline(-20, 'red');
+yline(-40, 'black');
+axis tight
+
+
 % %% Pulse - p^b(t)
 % 
 % len = length(pulse);
@@ -299,60 +267,49 @@ figure; imshow(zk_demod);
 % ylabel('|P^{b}(f)| in dB')
 % title('Frequency Domain Plot for Pulse')
 % axis tight
-% 
-% %% Sampler Output - z_{k}
-% frame1 = zt_inphase_timing_plot(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(1));
-% frame2 = zt_inphase_timing_plot(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(2));
-% frame3 = zt_inphase_timing_plot(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(3));
-% frame4 = zt_inphase_timing_plot(starts(4): end-1-upsampling_rate*(length(frame_sync))).* exp(-j*phases(4));
-% 
-% z1 = frame1(1:upsampling_rate:length(frame1));
-% z2 = frame2(1:upsampling_rate:length(frame2));
-% z3 = frame3(1:upsampling_rate:length(frame3));
-% z4 = frame4(1:upsampling_rate:length(frame4));
-% 
-% zk = [z1; z2; z3; z4];
-% len = length(zk);
-% samples=[0:len-1];
-% 
-% figure(4)
-% % LargeFigure(gcf, 0.15); % Make figure large
-% clf
-% 
-% % Plot time domain signal
-% hold on;
-% plot(samples, real(zk))
-% plot(samples, imag(zk))
-% hold off;
-% title('Sampler Output (z_{k})')
-% xlabel('Samples')
-% ylabel('z_{k}')
-% legend("real", "imag");
-% axis tight
-% 
-% %% y_base(t) Post-Time Recovery
-% 
-% len = length(zt_inphase_timing_plot);
-% t_microseconds=[0:len-1]/200e6*1e6;
-% 
-% figure(5)
-% % LargeFigure(gcf, 0.15); % Make figure large
-% clf
-% 
-% % Plot time domain signal
-% hold on;
-% plot(t_microseconds, real(zt_inphase_timing_plot))
-% plot(t_microseconds, imag(zt_inphase_timing_plot))
-% hold off;
-% title('y^{base}(t) after Time Recovery')
-% xlabel('t in microseconds')
-% ylabel('y^{base}(t)')
-% legend("real", "imag");
-% axis tight
-% 
+
+%% Sampler Output - z_{k}
+len = length(zk);
+samples=[0:len-1];
+
+figure(4)
+% LargeFigure(gcf, 0.15); % Make figure large
+clf
+
+% Plot time domain signal
+hold on;
+plot(samples, real(zk))
+plot(samples, imag(zk))
+hold off;
+title('Sampler Output (z_{k})')
+xlabel('Samples')
+ylabel('z_{k}')
+legend("real", "imag");
+axis tight
+
+%% y_base(t) Post-Time Recovery
+
+len = length(zt_inphase_timing_plot);
+t_microseconds=[0:len-1]/200e6*1e6;
+
+figure(5)
+% LargeFigure(gcf, 0.15); % Make figure large
+clf
+
+% Plot time domain signal
+hold on;
+plot(t_microseconds, real(zt_inphase_timing_plot))
+plot(t_microseconds, imag(zt_inphase_timing_plot))
+hold off;
+title('y^{base}(t) after Time Recovery')
+xlabel('t in microseconds')
+ylabel('y^{base}(t)')
+legend("real", "imag");
+axis tight
+
 % %% Equalizer sample output - v_k
 % 
-% vk = [zk1; zk2; zk7; zk4];
+% vk = [zk1; zk2; zk3; zk4];
 % vk = vk(1:1500);
 % len = length(vk);
 % samples=[0:len-1];
@@ -371,3 +328,11 @@ figure; imshow(zk_demod);
 % ylabel('v_{k}')
 % legend("real", "imag");
 % axis tight
+% 
+% figure(8)
+% hold on;
+% scatter(real(zk1), imag(zk1));
+% scatter(real(zk2), imag(zk2));
+% scatter(real(zk3), imag(zk3));
+% scatter(real(zk4(1:240)), imag(zk4(1:240)));
+% scatter([-1, 1], [0,0]);

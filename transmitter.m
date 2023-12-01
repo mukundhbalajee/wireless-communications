@@ -53,7 +53,10 @@ options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
            1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
 
 qam_points = options(qam_bits);
-save("qam_bits","qam_bits")
+qam_preamble = qam_points(1:length(preamble)/4);
+qam_frame_sync = qam_preamble(end-length(frame_sync)/4+1:end);
+save('qam_pre', 'qam_preamble');
+save('qam_fsync', 'qam_frame_sync')
 
 %% Transmission
 
