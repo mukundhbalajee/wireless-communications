@@ -75,6 +75,23 @@ for i = 1:length(inds)
 end
 
 %% Equalization
+% filter_length = 16;
+% mu = 0.001;
+% eq_weights = zeros(1, filter_length); % Initialize equalizer weights
+% 
+% %Train filter based on each received chunk
+% for frame = 1:num_frames
+%     start_ind = starts(frame);
+%     if frame == num_frames
+%         end_ind = length(zt_inphase_timing);
+%     else
+%         end_ind = starts(frame+1);
+%     end
+%     
+%     received_pilot = zt_inphase_timing(start_ind:length(init_pilot));
+%     eq_weights = train_filter(eq_weights, 2, received_pilot, frame_sync, mu);
+% end
+
 received_preamble = zt_inphase_timing(1:upsampling_rate:length(preamble)*upsampling_rate);
 channel_effect = abs(received_preamble)'./abs(preamble);
 h0=mean(abs(channel_effect));
@@ -322,11 +339,27 @@ xlabel('Samples')
 ylabel('v_{k}')
 legend("real", "imag");
 axis tight
+%% Constellation Plot
 
 figure(8)
 hold on;
-scatter(real(zk1), imag(zk1));
-scatter(real(zk2), imag(zk2));
-scatter(real(zk3), imag(zk3));
-scatter(real(zk4(1:240)), imag(zk4(1:240)));
-scatter([-1, 1], [0,0]);
+scatter(real(zk), imag(zk));
+scatter(reshape(real(options), 1, 16), reshape(imag(options), 1, 16), 'LineWidth', 2);
+xlabel('I'); ylabel('Q')
+hold off;
+
+%% LMS Algorithm
+
+function [eq_weights] = train_filter(eq_weights, train_iter, received_signal, expected_signal, mu)
+    filter_length = 8;
+    for j = 1:train_iter
+        for i = filter_length:length(received_signal)
+            received_segment = received_signal(i:-1:i-filter_length+1);
+            predicted_output = eq_weights * received_segment.';
+            error = predicted_output - expected_signal(i);
+            new_w = mu * error * conj(received_segment);
+            eq_weights = eq_weights - reshape(new_w, 1, filter_length);
+        end
+    end
+end
+
