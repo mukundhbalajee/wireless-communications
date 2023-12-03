@@ -1,7 +1,7 @@
 %% Setup
 clear; clc; close all;
 
-sync_len = 24; % microseconds
+sync_len = 12; % microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
 
@@ -10,7 +10,7 @@ new_preamble = 0;
 if(new_preamble)
     disp("New Preamble")
 
-    freq_sync = ones(1, fs*sync_len/upsampling_rate); %2 us of frame sync for the receiver to get PLL lock
+    freq_sync = ones(1, fs*sync_len*8/upsampling_rate); %2 us of frame sync for the receiver to get PLL lock
     t_sync = floor(2.*rand(1, fs*sync_len/upsampling_rate)); %Pseudo-random
     frame_sync = floor(2.*rand(1, fs*sync_len/upsampling_rate)); %Pseudo-random
     save("frame_sync", "frame_sync")
@@ -31,11 +31,16 @@ if(mod(length(frame_sync), 4)) error("NOT MOD 4"); end
 
 image = imread('images/shannon20520.bmp');
 dims = size(image);
-im = double(reshape(image, 2052, dims(1)*dims(2)/2052));
+im = double(reshape(image, 1, dims(1)*dims(2)));
+im = horzcat(im, zeros(1, 1028*20-20520));
+im = double(reshape(im, 1028, length(im)/1028));
 
 bits = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
-    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)');
+    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)', ...
+     frame_sync, im(:,11)', frame_sync, im(:,12)', frame_sync, im(:,13)', frame_sync, im(:,14)' ...
+    , frame_sync, im(:,15)', frame_sync, im(:,16)', frame_sync, im(:,17)', frame_sync, im(:,18)' ...
+    , frame_sync, im(:,19)', frame_sync, im(:,20)');
 
 bits = string(reshape(bits, 4, length(bits)/4));
 

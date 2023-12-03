@@ -4,25 +4,25 @@ load transmitsignal.mat;
 load qam_pre.mat
 load qam_fsync.mat
 
-% receivedsignal = transmitsignal.';
-
 preamble = qam_preamble;
 frame_sync = qam_frame_sync;
 
-sync_len = 12; % microseconds
+% receivedsignal = transmitsignal.';
+
+sync_len = 24; % microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
+M = 16;
+b = log2(M);
 pulse = rcosdesign(0.3, 30, upsampling_rate, 'sqrt');
 
-%% Demodulate
+%% Matched Filter
 wt = fliplr(pulse); %probably unnecessary
 zt = conv(wt, receivedsignal);
 
 %% Timing Synchronization
 
-num_frames = 20;
-
-sig_to_find = preamble;  %PUT SIGNAL TO FIND HERE
+sig_to_find = preamble;
 
 xt_conj = conj(sig_to_find); 
 
@@ -32,23 +32,21 @@ p = length(xt_conj);
 
 for i = 1:tau-p*upsampling_rate
     sums(i) = 0;
-    for k = 0:p-1
-        sums(i) = sums(i) + xt_conj(k+1)*zt(k*upsampling_rate+i);
+    for k = 1:p
+        sums(i) = sums(i) + xt_conj(k)*zt((k-1)*upsampling_rate+i);
     end
 end
 
-[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
-maxes = maxk(pks, num_frames);
-
-timing_offset = inds(1);
+timing_offset = find(abs(sums) == max(abs(sums)));
 zt_timing = zt(timing_offset:end);
-phase = angle(sums(inds(1)));
-zt_inphase_timing = zt_timing;
+phase = angle(max(sums));
+zt_inphase_timing = zt_timing .* exp(-j*phase); % Remove phase offset
 zt_inphase_timing_plot = zt_inphase_timing;
 
 %% Frame Synchronization
 
-sig_to_find = frame_sync;  %PUT SIGNAL TO FIND HERE
+sig_to_find = frame_sync;
+num_frames = 10;
 xt_conj = conj(sig_to_find);
 
 tau = length(zt_inphase_timing);
@@ -58,11 +56,11 @@ p = length(xt_conj);
 for i = 1:tau-p*upsampling_rate-1
     sums(i) = 0;
     for k = 1:p
-        sums(i) = sums(i) + xt_conj(k)*zt_inphase_timing(k*upsampling_rate+i);
+        sums(i) = sums(i) + xt_conj(k)*zt_inphase_timing((k-1)*upsampling_rate+i);
     end
 end
 
-[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
+[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 1);
 maxes = maxk(pks, num_frames);
 
 locs = zeros(1, num_frames);
@@ -74,37 +72,21 @@ end
 locs = sort(locs);
 starts_pilot = locs;
 phases = angle(sums(locs));
-starts = locs + upsampling_rate*(length(frame_sync)+1);
-
-% %% Equalization
-% received_preamble = zt_inphase_timing(1:upsampling_rate:length(preamble)*upsampling_rate);
-% channel_effect = abs(received_preamble)'./abs(preamble);
-% h0=mean(abs(channel_effect));
-% zt_inphase_timing = zt_inphase_timing./h0;
+starts = locs + upsampling_rate*(length(frame_sync));
 
 %% Sampling
-frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(1));
-frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(2));
-frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(3));
-frame4 = zt_inphase_timing(starts(4): starts(5)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(4));
-frame5 = zt_inphase_timing(starts(5): starts(6)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(5));
-frame6 = zt_inphase_timing(starts(6): starts(7)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(6));
-frame7 = zt_inphase_timing(starts(7): starts(8)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(7));
-frame8 = zt_inphase_timing(starts(8): starts(9)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(8));
-frame9 = zt_inphase_timing(starts(9): starts(10)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(9));
-frame10 = zt_inphase_timing(starts(10): starts(11)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(10));
-frame11 = zt_inphase_timing(starts(11): starts(12)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(11));
-frame12 = zt_inphase_timing(starts(12): starts(13)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(12));
-frame13 = zt_inphase_timing(starts(13): starts(14)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(13));
-frame14 = zt_inphase_timing(starts(14): starts(15)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(14));
-frame15 = zt_inphase_timing(starts(15): starts(16)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(15));
-frame16 = zt_inphase_timing(starts(16): starts(17)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(16));
-frame17 = zt_inphase_timing(starts(17): starts(18)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(17));
-frame18 = zt_inphase_timing(starts(18): starts(19)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(18));
-frame19 = zt_inphase_timing(starts(19): starts(20)-upsampling_rate*(length(frame_sync))).* exp(-j*phases(19));
-frame20 = zt_inphase_timing(starts(20): end).* exp(-j*phases(20));
+frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync)));
+frame2 = zt_inphase_timing(starts(2): starts(3)-upsampling_rate*(length(frame_sync)));
+frame3 = zt_inphase_timing(starts(3): starts(4)-upsampling_rate*(length(frame_sync)));
+frame4 = zt_inphase_timing(starts(4): starts(5)-upsampling_rate*(length(frame_sync)));
+frame5 = zt_inphase_timing(starts(5): starts(6)-upsampling_rate*(length(frame_sync)));
+frame6 = zt_inphase_timing(starts(6): starts(7)-upsampling_rate*(length(frame_sync)));
+frame7 = zt_inphase_timing(starts(7): starts(8)-upsampling_rate*(length(frame_sync)));
+frame8 = zt_inphase_timing(starts(8): starts(9)-upsampling_rate*(length(frame_sync)));
+frame9 = zt_inphase_timing(starts(9): starts(10)-upsampling_rate*(length(frame_sync)));
+frame10 = zt_inphase_timing(starts(10): end);
 
-len = upsampling_rate*floor(length(frame1)/upsampling_rate);
+len = 513*upsampling_rate;
 zk1 = frame1(1:upsampling_rate:len);
 zk2 = frame2(1:upsampling_rate:len);
 zk3 = frame3(1:upsampling_rate:len);
@@ -115,33 +97,23 @@ zk7 = frame7(1:upsampling_rate:len);
 zk8 = frame8(1:upsampling_rate:len);
 zk9 = frame9(1:upsampling_rate:len);
 zk10 = frame10(1:upsampling_rate:len);
-zk11 = frame11(1:upsampling_rate:len);
-zk12 = frame12(1:upsampling_rate:len);
-zk13 = frame13(1:upsampling_rate:len);
-zk14 = frame14(1:upsampling_rate:len);
-zk15 = frame15(1:upsampling_rate:len);
-zk16 = frame16(1:upsampling_rate:len);
-zk17 = frame17(1:upsampling_rate:len);
-zk18 = frame18(1:upsampling_rate:len);
-zk19 = frame19(1:upsampling_rate:len);
-zk20 = frame20(1:upsampling_rate:len);
 
-zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10; zk11; zk12; zk13; zk14; zk15; zk16; zk17; zk18; zk19; zk20];
+zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10];
 zk = transpose(zk);
 
 %% Equalization - MMSE-LE
 
-filter_length = 17;
-mu = .2;
+filter_length = 21;
+mu = .3;
 eq_weights = zeros(filter_length, num_frames);
 
-%Train filter based on each received chunk
+%Train filter based on each received chunk                     
 for frame = 1:num_frames
-    received_pilot_frame = zt_inphase_timing(starts_pilot(frame) + upsampling_rate:(length(frame_sync)+1)*upsampling_rate+starts_pilot(frame)).* exp(-j*phases(frame));
+    received_pilot_frame = zt_inphase_timing(starts_pilot(frame):(length(frame_sync)-1)*upsampling_rate+starts_pilot(frame));
     received_pilot = received_pilot_frame(1:upsampling_rate:length(received_pilot_frame));
-    trained_filter = zeros(1, filter_length);
-    trained_filter = train_filter(trained_filter, 400, received_pilot, frame_sync, mu, filter_length);
-    eq_weights(:,frame) = trained_filter.';
+    trained_filter = eq_weights(:, frame);
+    trained_filter = train_filter(trained_filter, 50, received_pilot, frame_sync, mu, filter_length);
+    eq_weights(:,frame) = trained_filter;
 end
 
 zk_eq = zeros(size(zk));
@@ -152,16 +124,11 @@ for frame = 1:num_frames
     if frame == num_frames
         end_ind = length(zk);
     end
-    frame_size = end_ind-start_ind+1;
     received_frame = zk(start_ind:end_ind);
     eq_val = conv(received_frame, eq_weights(:, frame));
-%     eq_val = filter(eq_weights(:, frame), 1, received_frame);
     zk_eq(start_ind:end_ind) = eq_val(1:frame_size);
     start_ind = end_ind+1;
 end
-% zt_inphase_timing = filter(eq_weights,1,zt_inphase_timing);
-zk_eq = transpose(zk_eq);
-zk = zk_eq;
 
 %% Guessing
 d = sqrt(2)/3;
@@ -170,16 +137,16 @@ options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
            1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
            1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
 
-received_pts = zeros(1, length(zk)); %QAM
+received_pts = zeros(1, length(zk_eq)); %QAM
 
 min_pt = -1;
 min_distance = 10000;
-for i = 1:length(zk)
+for i = 1:length(zk_eq)
     min_pt = -1;
     min_distance = 10000;
-    for j = 1:16
+    for j = 1:M
         refpoint = [real(options(j)), imag(options(j))];
-        point = [real(zk(i)), imag(zk(i))];
+        point = [real(zk_eq(i)), imag(zk_eq(i))];
         distance = sqrt((refpoint(1)-point(1))^2 + (refpoint(2)-point(2))^2);
         if(distance < min_distance)
             min_distance = distance;
@@ -200,56 +167,81 @@ rx_bits = rx_bits';
 image = imread('images/shannon20520.bmp');
 dims = size(image);
 
-rx_bits = rx_bits(1:dims(1)*dims(2));
-bits = double(reshape(image, 1, dims(1)*dims(2)));
+bits = string(double(reshape(image, 4, dims(1)*dims(2)/4)));
 
-start = 1;
-stop = length(rx_bits);
+qam_bits = strings(1, length(bits));
+for i = 1:length(bits)
+    qam_bits(i) = strjoin(bits(:,i),'');
+end
+
+qam_bits = bin2dec((qam_bits))+1;
+qam_points = options(qam_bits);
+
+bits = double(reshape(image, 1, dims(1)*dims(2)));
+n=8;
+start = 1;%n*4*length(zk1)+1;
+stop = length(bits); %start + 400; %(n+1)*4*length(zk1);
 BER = length(find(rx_bits(start:stop) ~= bits(start:stop)))/(stop-start)*100
+N = 1500;
+real_diffs = (real((qam_points(1:N))) - real(zk_eq(1:N)));
+imag_diffs = (imag((qam_points(1:N))) - imag(zk_eq(1:N)));
+mean(real_diffs)
+mean(imag_diffs)
 
 %% Plotting
 
-received_image = [rx_bits];
-received_image = reshape(received_image, dims(1), dims(2));
-
-figure(1); 
-
-subplot(2,1,1);
-hold on;
-imshow(image);  title("original")
-hold off;
-
-received_image = [rx_bits];
-received_image = reshape(received_image, dims(1), dims(2));
-
-subplot(2,1,2); 
-hold on;
-imshow(received_image); title("received")
-hold off;
-
-
-% %% Transmitted signal - x_base(t)
+% figure(1); 
 % 
-% x_base_t = transmitsignal;
-% len = length(x_base_t);
-% t_microseconds=[0:len-1]/200e6*1e6;
-% 
-% figure(1)
-% LargeFigure(gcf, 0.15); % Make figure large
-% clf
-% 
-% % Plot time domain signal
 % subplot(2,1,1);
 % hold on;
-% plot(t_microseconds, real(x_base_t))
-% plot(t_microseconds, imag(x_base_t))
+% imshow(image); title("original")
 % hold off;
-% xlabel('t in microseconds')
-% ylabel('x^{base}(t)')
-% legend("real", "imag");
-% title('Time Domain Plot for transmitted signal, x_{base}(t)')
-% axis tight
 % 
+% received_image = [rx_bits];
+% received_image = reshape(received_image, dims(1), dims(2));
+% 
+% subplot(2,1,2); 
+% hold on;
+% imshow(received_image); title("received")
+% hold off;
+
+%% Transmitted signal - x_base(t)
+
+x_base_t = transmitsignal;
+len = length(x_base_t);
+t_microseconds=[0:len-1]/200e6*1e6;
+
+figure(2);
+LargeFigure(gcf, 0.15); % Make figure large
+clf
+
+% Plot time domain signal
+subplot(2,1,1);
+hold on;
+plot(t_microseconds, real(x_base_t))
+plot(t_microseconds, imag(x_base_t))
+hold off;
+xlabel('t in microseconds')
+ylabel('x^{base}(t)')
+legend("real", "imag");
+title('Time Domain Plot for transmitted signal, x_{base}(t)')
+axis tight
+
+vk = zk_eq;
+len = length(vk);
+samples=[0:len-1];
+
+subplot(2,1,2);
+hold on;
+plot(samples, real(vk))
+plot(samples, imag(vk))
+hold off;
+title('Equalizer Sample Output (v_{k})')
+xlabel('Samples')
+ylabel('v_{k}')
+legend("real", "imag");
+axis tight
+
 % % Plot frequency domain signal
 % subplot(2,1,2);
 % plot([-len/2+1:len/2]*200/len, 20*log10(abs(fftshift(1/sqrt(len)*fft(x_base_t)))))
@@ -271,7 +263,7 @@ hold off;
 % len = length(y_base_t);
 % t_microseconds=[0:len-1]/200e6*1e6;
 % 
-% figure(2)
+% figure(3);
 % LargeFigure(gcf, 0.15); % Make figure large
 % clf
 % 
@@ -307,7 +299,7 @@ hold off;
 % len = length(pulse);
 % t_microseconds=[0:len-1]/200e6*1e6;
 % 
-% figure(3)
+% figure(4);
 % LargeFigure(gcf, 0.15); % Make figure large
 % clf
 % 
@@ -335,8 +327,8 @@ hold off;
 % len = length(zk);
 % samples=[0:len-1];
 % 
-% figure(4)
-% % LargeFigure(gcf, 0.15); % Make figure large
+% figure(5);
+% LargeFigure(gcf, 0.15); % Make figure large
 % clf
 % 
 % % Plot time domain signal
@@ -355,8 +347,8 @@ hold off;
 % len = length(zt_inphase_timing_plot);
 % t_microseconds=[0:len-1]/200e6*1e6;
 % 
-% figure(5)
-% % LargeFigure(gcf, 0.15); % Make figure large
+% figure(6);
+% LargeFigure(gcf, 0.15); % Make figure large
 % clf
 % 
 % % Plot time domain signal
@@ -369,18 +361,18 @@ hold off;
 % ylabel('y^{base}(t)')
 % legend("real", "imag");
 % axis tight
-% 
+
 % %% Equalizer sample output - v_k
 % 
-% vk = zk;
+% vk = zk_eq;
 % len = length(vk);
 % samples=[0:len-1];
 % 
-% figure(6)
-% % LargeFigure(gcf, 0.15); % Make figure large
+% figure(7);
+% LargeFigure(gcf, 0.15); % Make figure large
 % clf
 % 
-% % Plot time domain signal
+% subplot(2,1,1);
 % hold on;
 % plot(samples, real(vk))
 % plot(samples, imag(vk))
@@ -390,25 +382,23 @@ hold off;
 % ylabel('v_{k}')
 % legend("real", "imag");
 % axis tight
-% %% Constellation Plot
 % 
-% figure(8)
+% subplot(2,1,2);
 % hold on;
-% scatter(real(zk), imag(zk));
-% scatter(reshape(real(options), 1, 16), reshape(imag(options), 1, 16), 'LineWidth', 2);
-% xlabel('I'); ylabel('Q')
-% hold off;
+% scatter(real(zk_eq), imag(zk_eq));
+% scatter([-1, 1], [0,0]);
+% legend("real", "imag");
+% axis tight
 
 %% LMS Algorithm
-
 function [eq_weights] = train_filter(eq_weights, train_iter, received_signal, expected_signal, mu, filter_length)
     for j = 1:train_iter
         for i = filter_length:length(expected_signal)
             received_segment = received_signal(i:-1:i-filter_length+1);
-            predicted_output = eq_weights * received_segment;
+            predicted_output = eq_weights .* received_segment;
             error = predicted_output - expected_signal(i);
-            new_w = mu * error * conj(received_segment).';
-            eq_weights = eq_weights - reshape(new_w, 1, filter_length);
+            new_w = mu * error .* conj(received_segment);
+            eq_weights = eq_weights - new_w;
         end
     end
 end
