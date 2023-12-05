@@ -223,7 +223,7 @@ BER = length(find(rx_bits(start:stop) ~= bits(start:stop)))/(stop-start)
 received_image = [rx_bits];
 received_image = reshape(received_image, dims(1), dims(2));
 
-figure(1); 
+figure(10); 
 
 subplot(2,1,1);
 hold on;
@@ -277,8 +277,7 @@ axis tight
 
 %% Received Signal - y_base(t)
 
-y_base_t = receivedsignal;
-y_base_t = y_base_t(1:30000);
+y_base_t = receivedsignal;;
 len = length(y_base_t);
 t_microseconds=[0:len-1]/200e6*1e6;
 
