@@ -207,7 +207,7 @@ rx_bits = str2num(cell2mat(rx_bits));
 rx_bits = rx_bits';
 
 %% Error checking and BER calculation
-image = imread('images/shannon20520.bmp');
+image = imread('images/shannon1440.bmp');
 dims = size(image);
 
 rx_bits = rx_bits(1:dims(1)*dims(2));
@@ -404,7 +404,7 @@ axis tight
 figure(8)
 hold on;
 scatter(real(zk), imag(zk));
-scatter(reshape(real(options), 1, 16), reshape(imag(options), 1, 16), 'LineWidth', 2);
+scatter(reshape(real(options), 1, 4), reshape(imag(options), 1, 4), 'LineWidth', 2);
 xlabel('I'); ylabel('Q')
 hold off;
 

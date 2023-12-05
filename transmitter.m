@@ -4,8 +4,9 @@ clear; clc; close all;
 sync_len = 12; % microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
-
-new_preamble = 0;
+code_length=100;  % Code length
+K=10;  % Number of Codes or code sequences
+new_preamble = 1;
 
 if(new_preamble)
     disp("New Preamble")
@@ -24,16 +25,16 @@ end
 
 preamble = horzcat(freq_sync, t_sync, frame_sync);
 
-if(mod(length(frame_sync), 2)) error("NOT MOD 4"); end
-
+if(mod(length(frame_sync), 2)) error("NOT MOD 2"); end
 
 %% Image to QAM
 
-image = imread('images/shannon20520.bmp');
+gold_codes = generate_gold_code(31);
+image = imread('images/shannon1440.bmp');
 dims = size(image);
 im = double(reshape(image, 1, dims(1)*dims(2)));
 im = horzcat(im, zeros(1, 1028*20-20520));
-im = double(reshape(im, 1028, length(im)/1028));
+im = double(reshape(im, 74, length(im)/74));
 
 bits = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
@@ -107,3 +108,78 @@ yline(-20, 'red');
 yline(-40, 'black');
 axis tight
 
+%% Gold Code Generation
+
+function gold_codes = generate_gold_code(N)
+    user1 = randsrc(1,5,[0 1]); user2 = randsrc(1,5,[0 1]);
+    m_seq1 = zeros(1, N); m_seq2 = zeros(1, N);
+    for j = 1:N
+        m_seq1(j) = user1(1);
+        if(user1(1) == user1(4))
+            temp3 = 0;
+        else
+            temp3 = 1;
+        end
+        user1(1) = user1(2);
+        user1(2) = user1(3);
+        user1(3) = user1(4);
+        user1(4) = user1(5);
+        user1(5) = temp3;
+    end
+    for i = 1:N
+        m_seq2(i) = user2(1);
+        if(user2(1) == user2(2))
+            temp3 = 0;
+        else
+            temp3 = 1;
+        end
+        if(user2(4) == temp3)
+            temp2 = 0;
+        else
+            temp2 = 1;
+        end
+        if(user2(5) == temp2)
+            temp3 = 0;
+        else
+            temp3 = 1;
+        end
+        user2(1) = user2(2);
+        user2(2) = user2(3);
+        user2(3) = user2(4);
+        user2(4) = user2(5);
+        user2(5) = temp3; 
+    end
+    gold_codes = zeros(2, N);
+    for user = 1:2
+        temp = m_seq2(1);
+        
+        %Shift by 1 bit
+        for i = 1:N-1
+            m_seq2(i) = m_seq2(i+1);
+        end
+        m_seq2(N) = temp;
+        
+        %Code Generation
+        codes = zeros(1, N);
+        for i = 1:N
+            codes(i) = xor(m_seq1(i), m_seq2(i));
+        end
+        size(gold_codes)
+        size(codes)
+        gold_codes(user, :) = codes;
+    end
+    
+    %Normalise
+    for r = 1:2
+        for c = 1:N
+            if gold_codes(r,c) == 0
+                gold_codes(r,c) = -1;
+            end
+        end
+    end
+end
+
+function signal_spread = spread_signal_gold(data, gold_code, spreading_gain)
+    repeated_gold_code = repmat(gold_code, 1, ceil(length(data) / length(gold_code)));
+    signal_spread = data .* repeated_gold_code * spreading_gain;
+end
