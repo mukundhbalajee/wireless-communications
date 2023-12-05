@@ -24,7 +24,7 @@ end
 
 preamble = horzcat(freq_sync, t_sync, frame_sync);
 
-if(mod(length(frame_sync), 4)) error("NOT MOD 4"); end
+if(mod(length(frame_sync), 2)) error("NOT MOD 4"); end
 
 
 %% Image to QAM
@@ -42,7 +42,7 @@ bits = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', .
     , frame_sync, im(:,15)', frame_sync, im(:,16)', frame_sync, im(:,17)', frame_sync, im(:,18)' ...
     , frame_sync, im(:,19)', frame_sync, im(:,20)');
 
-bits = string(reshape(bits, 4, length(bits)/4));
+bits = string(reshape(bits, 2, length(bits)/2));
 
 qam_bits = strings(1, length(bits));
 for i = 1:length(bits)
@@ -52,14 +52,12 @@ end
 qam_bits = bin2dec((qam_bits))+1;
 
 d = sqrt(2)/3;
-options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
-           1.5+0.5j, 0.5+0.5j, -1.5+0.5j, -0.5+0.5j
-           1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
-           1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
+options = [0.5+0.5j, -1.5+0.5j
+           0.5-1.5j, -1.5-1.5j].*d;
 
 qam_points = options(qam_bits);
-qam_preamble = qam_points(1:length(preamble)/4);
-qam_frame_sync = qam_preamble(end-length(frame_sync)/4+1:end);
+qam_preamble = qam_points(1:length(preamble)/2);
+qam_frame_sync = qam_preamble(end-length(frame_sync)/2+1:end);
 save('qam_pre', 'qam_preamble');
 save('qam_fsync', 'qam_frame_sync')
 

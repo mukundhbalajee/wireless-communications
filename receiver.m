@@ -176,10 +176,9 @@ end
 
 %% Guessing
 d = sqrt(2)/3;
-options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
-           1.5+0.5j, 0.5+0.5j, -1.5+0.5j, -0.5+0.5j
-           1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
-           1.5-0.5j, 0.5-0.5j, -1.5-0.5j, -0.5-0.5j].*d;
+options = [0.5+0.5j, -1.5+0.5j
+           0.5-1.5j, -1.5-1.5j].*d;
+
 
 received_pts = zeros(1, length(zk)); %QAM
 
@@ -188,7 +187,7 @@ min_distance = 10000;
 for i = 1:length(zk)
     min_pt = -1;
     min_distance = 10000;
-    for j = 1:16
+    for j = 1:4
         refpoint = [real(options(j)), imag(options(j))];
         point = [real(zk(i)), imag(zk(i))];
         distance = sqrt((refpoint(1)-point(1))^2 + (refpoint(2)-point(2))^2);
@@ -201,7 +200,7 @@ for i = 1:length(zk)
 end
 
 %% QAM to Bits
-rx_bits = dec2bin(received_pts, 4);
+rx_bits = dec2bin(received_pts, 2);
 rx_bits = split(char(strjoin(string(rx_bits),'')),'');
 rx_bits = rx_bits(2:end-1);
 rx_bits = str2num(cell2mat(rx_bits));
