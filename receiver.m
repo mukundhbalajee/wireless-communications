@@ -4,7 +4,9 @@ load transmitsignal.mat;
 load qam_pre.mat
 load qam_fsync.mat
 
-% receivedsignal = transmitsignal.';
+% receivedsignal = transmitsignal;
+
+MMSE = true;
 
 preamble = qam_preamble;
 frame_sync = qam_frame_sync;
@@ -82,10 +84,14 @@ end
 starts = locs + upsampling_rate*(length(frame_sync)+1);
 
 %% Equalization
-% received_preamble = zt_inphase_timing(1:upsampling_rate:length(preamble)*upsampling_rate);
-% channel_effect = abs(received_preamble)'./abs(preamble);
-% h0=mean(abs(channel_effect));
-% zt_inphase_timing = zt_inphase_timing./h0;
+
+if(~MMSE)
+    disp("One Tap EQ");
+    received_preamble = zt_inphase_timing(1:upsampling_rate:length(preamble)*upsampling_rate);
+    channel_effect = abs(received_preamble)'./abs(preamble);
+    h0=mean(abs(channel_effect));
+    zt_inphase_timing = zt_inphase_timing./h0;
+end
 
 %% Sampling
 frame1 = zt_inphase_timing(starts(1): starts(2)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(1)+phases(2)));
@@ -135,36 +141,38 @@ zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10; zk11; zk12; zk13; zk14;
 zk = transpose(zk);
 
 %% Equalization - MMSE-LE
-
-filter_length = 13;
-mu = .1;
-eq_weights = zeros(filter_length, num_frames);
-
-%Train filter based on each received chunk
-for frame = 1:num_frames
-    received_pilot_frame = zt_inphase_timing(starts_pilot(frame) + upsampling_rate:(length(frame_sync)+1)*upsampling_rate+starts_pilot(frame)).* exp(-j*phases(frame));
-    received_pilot = received_pilot_frame(1:upsampling_rate:length(received_pilot_frame));
-    trained_filter = zeros(1, filter_length);
-    trained_filter = train_filter(trained_filter, 50, received_pilot, frame_sync, mu, filter_length);
-    eq_weights(:,frame) = trained_filter.';
-end
-
-zk_eq = zeros(size(zk));
-frame_size = (length(zk) / num_frames);
-start_ind = 1;
-for frame = 1:num_frames
-    end_ind = start_ind+frame_size-1;
-    if frame == num_frames
-        end_ind = length(zk);
+if(MMSE)
+    disp("MMSE-LE EQ");
+    filter_length = 13;
+    mu = .1;
+    eq_weights = zeros(filter_length, num_frames);
+    
+    %Train filter based on each received chunk
+    for frame = 1:num_frames
+        received_pilot_frame = zt_inphase_timing(starts_pilot(frame) + upsampling_rate:(length(frame_sync)+1)*upsampling_rate+starts_pilot(frame)).* exp(-j*phases(frame));
+        received_pilot = received_pilot_frame(1:upsampling_rate:length(received_pilot_frame));
+        trained_filter = zeros(1, filter_length);
+        trained_filter = train_filter(trained_filter, 50, received_pilot, frame_sync, mu, filter_length);
+        eq_weights(:,frame) = trained_filter.';
     end
-    frame_size = end_ind-start_ind+1;
-    received_frame = zk(start_ind:end_ind);
-    eq_val = conv(received_frame, eq_weights(:, frame));
-    zk_eq(start_ind:end_ind) = eq_val(1:frame_size);
-    start_ind = end_ind+1;
+    
+    zk_eq = zeros(size(zk));
+    frame_size = (length(zk) / num_frames);
+    start_ind = 1;
+    for frame = 1:num_frames
+        end_ind = start_ind+frame_size-1;
+        if frame == num_frames
+            end_ind = length(zk);
+        end
+        frame_size = end_ind-start_ind+1;
+        received_frame = zk(start_ind:end_ind);
+        eq_val = conv(received_frame, eq_weights(:, frame));
+        zk_eq(start_ind:end_ind) = eq_val(1:frame_size);
+        start_ind = end_ind+1;
+    end
+    zk_eq = transpose(zk_eq);
+    zk = zk_eq;
 end
-zk_eq = transpose(zk_eq);
-zk = zk_eq;
 
 %% Guessing
 d = sqrt(2)/3;
@@ -207,7 +215,7 @@ rx_bits = rx_bits(1:dims(1)*dims(2));
 bits = double(reshape(image, 1, dims(1)*dims(2)));
 
 start = 1;
-stop = length(bits);
+stop = length(bits)/20*20;
 BER = length(find(rx_bits(start:stop) ~= bits(start:stop)))/(stop-start)
 
 %% Plotting
