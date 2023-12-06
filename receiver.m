@@ -1,17 +1,16 @@
 clear; close all; clc;
-load receivedsignal.mat;
+load receivedsignal2.mat;
 load transmitsignal.mat;
 load qam_pre.mat
 load qam_fsync.mat
-
-% receivedsignal = transmitsignal;
 
 MMSE = true;
 
 preamble = qam_preamble;
 frame_sync = qam_frame_sync;
 
-sync_len = 12; % microseconds
+sync_len = 12;
+% microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
 pulse = rcosdesign(0.3, 30, upsampling_rate, 'sqrt');
@@ -143,8 +142,8 @@ zk = transpose(zk);
 %% Equalization - MMSE-LE
 if(MMSE)
     disp("MMSE-LE EQ");
-    filter_length = 13;
-    mu = .1;
+    filter_length = 6;
+    mu = .2;
     eq_weights = zeros(filter_length, num_frames);
     
     %Train filter based on each received chunk
@@ -152,7 +151,7 @@ if(MMSE)
         received_pilot_frame = zt_inphase_timing(starts_pilot(frame) + upsampling_rate:(length(frame_sync)+1)*upsampling_rate+starts_pilot(frame)).* exp(-j*phases(frame));
         received_pilot = received_pilot_frame(1:upsampling_rate:length(received_pilot_frame));
         trained_filter = zeros(1, filter_length);
-        trained_filter = train_filter(trained_filter, 50, received_pilot, frame_sync, mu, filter_length);
+        trained_filter = train_filter(trained_filter, 100, received_pilot, frame_sync, mu, filter_length);
         eq_weights(:,frame) = trained_filter.';
     end
     
