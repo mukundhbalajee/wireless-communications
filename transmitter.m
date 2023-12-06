@@ -3,7 +3,7 @@ clear; clc; close all;
 
 L = 32; %processing gain/spreading gain
 
-sync_len = 4; % in samples
+sync_len = 20; % in samples
 fs = 200; %MHz
 upsampling_rate = 12;
 new_preamble = 0;
@@ -11,13 +11,16 @@ new_preamble = 0;
 if(new_preamble)
     disp("New Preamble")
 
-    freq_sync = ones(1, 3*sync_len); %2 us of frame sync for the receiver to get PLL lock
+    freq_sync = ones(1, sync_len); %2 us of frame sync for the receiver to get PLL lock
     t_sync = floor(2.*rand(1, sync_len)); %Pseudo-random
     frame_sync = floor(2.*rand(1, sync_len)); %Pseudo-random
+    gc1 = generate_gold_code(32);
+    save("gold_codes.mat", "gc1");
     save("frame_sync", "frame_sync")
     save("t_sync", "t_sync")
     save("freq_sync", "freq_sync")
 else
+    load gold_codes
     load freq_sync;
     load t_sync.mat;
     load frame_sync.mat;
@@ -35,23 +38,16 @@ im = double(reshape(image, 1, dims(1)*dims(2)));
 
 user1 = im(1:100);
 user2 = im(101:200);
-
-im = reshape(user1, length(user1)/20, 20);
+n_frames = 10;
+im = reshape(user1, length(user1)/n_frames, n_frames);
 bits1 = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
-    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)', ...
-     frame_sync, im(:,11)', frame_sync, im(:,12)', frame_sync, im(:,13)', frame_sync, im(:,14)' ...
-    , frame_sync, im(:,15)', frame_sync, im(:,16)', frame_sync, im(:,17)', frame_sync, im(:,18)' ...
-    , frame_sync, im(:,19)', frame_sync, im(:,20)');
+    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)');
 
-im = reshape(user2, length(user2)/20, 20);
+im = reshape(user2, length(user2)/n_frames, n_frames);
 bits2 = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
-    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)', ...
-     frame_sync, im(:,11)', frame_sync, im(:,12)', frame_sync, im(:,13)', frame_sync, im(:,14)' ...
-    , frame_sync, im(:,15)', frame_sync, im(:,16)', frame_sync, im(:,17)', frame_sync, im(:,18)' ...
-    , frame_sync, im(:,19)', frame_sync, im(:,20)');
-
+    im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)');
 bits1 = string(reshape(bits1, 2, length(bits1)/2));
 bits2 = string(reshape(bits2, 2, length(bits2)/2));
 
@@ -79,12 +75,12 @@ qam_points2 = repmat(qam_points2, L, 1);
 qam_points1 = reshape(qam_points1, 1, L*length(bits1));
 qam_points2 = reshape(qam_points2, 1, L*length(bits2));
 
-gc1 = generate_gold_code(32);
+
 gc2 = gc1(2, :);
 gc1 = gc1(1, :);
 
-spread1 = spread_signal_gold(qam_points1, gc1, 32);
-spread2 = spread_signal_gold(qam_points2, gc2, 32);
+spread1 = spread_signal_gold(qam_points1, gc1, 1);
+spread2 = spread_signal_gold(qam_points2, gc2, 1);
 
 summed = spread1 + spread2; 
 
@@ -96,7 +92,7 @@ save('qam_fsync', 'qam_frame_sync');
 %% Transmission
 
 bits_up = upsample(summed, upsampling_rate);
-pulse = rcosdesign(0.3, 30, upsampling_rate, 'sqrt');
+pulse = rcosdesign(0.3, 40, upsampling_rate, 'sqrt');
 transmitsignal = conv(bits_up, pulse);
 transmitsignal = transmitsignal./max(abs(transmitsignal));
 save("transmitsignal.mat", "transmitsignal");
