@@ -1,5 +1,5 @@
 clear; close all; clc;
-load receivedsignal2.mat;
+load receivedsignal.mat;
 load transmitsignal.mat;
 load qam_pre.mat
 load qam_fsync.mat
@@ -174,7 +174,7 @@ if(MMSE)
 end
 
 %% Guessing
-d = sqrt(2)/3;
+d = 2/3;
 options = [1.5+1.5j, 0.5+1.5j, -1.5+1.5j, -0.5+1.5j
            1.5+0.5j, 0.5+0.5j, -1.5+0.5j, -0.5+0.5j
            1.5-1.5j, 0.5-1.5j, -1.5-1.5j, -0.5-1.5j
