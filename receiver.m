@@ -178,6 +178,7 @@ end
 %% Rake Receiver
 
 zk_rake = rake_receiver(zk, gc1, 32, 2, upsampling_rate);
+zk = zk_rake;
 
 %% Guessing
 d = sqrt(2)/3;
@@ -214,13 +215,15 @@ rx_bits = rx_bits';
 %% Error checking and BER calculation
 image = imread('images/shannon1440.bmp');
 dims = size(image);
+im = double(reshape(image, 1, dims(1)*dims(2)));
 
-rx_bits = rx_bits(1:dims(1)*dims(2));
-bits = double(reshape(image, 1, dims(1)*dims(2)));
+user1 = im(1:100);
+user2 = im(101:200);
 
 start = 1;
-stop = length(bits)/20*20;
-BER = length(find(rx_bits(start:stop) ~= bits(start:stop)))/(stop-start)
+stop = 100;
+BER1 = length(find(rx_bits(start:stop) ~= user1(start:stop)))/(stop-start)
+BER2 = length(find(rx_bits(start:stop) ~= user2(start:stop)))/(stop-start)
 
 %% Plotting
 
@@ -437,13 +440,13 @@ end
 %num_bits - number of bits transmitted by each user
 %num_fingers - number of fingers for each receiver
 function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, num_fingers, upsampling_rate)
-    zk_rake = zeros(size(received_signal));
+    zk_rake = zeros(2, length(received_signal));
     for user = 1:2
         rake_fingers = zeros(num_fingers, length(received_signal));
         % Generate delayed versions of the received signal for each finger
         for finger = 1:num_fingers
             delay = finger-1;
-            delayed_signal = [received_signal(length(received_signal) - delay*upsampling_rate + 1:length(received_signal)), received_signal(1:length(received_signal) - delay*upsampling_rate)];
+            delayed_signal = [received_signal(length(received_signal) - delay*upsampling_rate + 1:length(received_signal)); received_signal(1:length(received_signal) - delay*upsampling_rate)];
             rake_fingers(finger, :) = delayed_signal;
         end
         
@@ -455,6 +458,6 @@ function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, nu
         end
         
         % Combine the despread signals from all fingers
-        zk_rake(user, :) = sum(despread_fingers, 1);
+        zk_rake(user, :) = sum(despread_rake_finger, 1);
     end
 end
