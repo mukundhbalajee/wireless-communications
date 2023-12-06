@@ -421,3 +421,35 @@ function [eq_weights] = train_filter(eq_weights, train_iter, received_signal, ex
         end
     end
 end
+
+
+%% Rake Receiver
+
+%received_signal - signal for each individual user
+%gold_codes - same ones generated in transmitter.m
+%spreading_gain - given as 32dB
+%N - length of the gold code
+%num_bits - number of bits transmitted by each user
+%num_fingers - number of fingers for each receiver
+function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, num_fingers)
+    zk_rake = zeros(size(received_signal));
+    for user = 1:2
+        rake_fingers = zeros(num_fingers, length(received_signal));
+        % Generate delayed versions of the received signal for each finger
+        for finger = 1:num_fingers
+            delay = finger-1;
+            delayed_signal = [received_signal(length(received_signal) - delay*upsampling_rate + 1:length(received_signal)), received_signal(1:length(received_signal) - delay*upsampling_rate)];
+            rake_fingers(finger, :) = delayed_signal;
+        end
+        
+        % Despread the signals using Gold codes
+        despread_rake_finger = zeros(num_fingers, length(received_signal));
+        for finger = 1:2
+            repeated_gold_code = repmat(gold_codes(user, :), 1, ceil(length(received_signal) / length(gold_codes(user, :))));
+            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code / spreading_gain);
+        end
+        
+        % Combine the despread signals from all fingers
+        zk_rake(user, :) = sum(despread_fingers, 1);
+    end
+end
