@@ -134,6 +134,18 @@ yline(-20, 'red');
 yline(-40, 'black');
 axis tight
 
+figure;
+subplot(3, 1, 1); hold on
+plot(real(spread1(1:100)));
+plot(imag(spread1(1:100))); title("CH1"); hold off
+subplot(3, 1, 2); hold on
+plot(real(spread2(1:100)));
+plot(imag(spread2(1:100)));title("CH2"); hold off
+subplot(3, 1, 3); hold on
+plot(real(summed(1:100)));
+plot(imag(summed(1:100)));title("Combined"); hold off
+
+
 %% Gold Code Generation
 
 function gold_codes = generate_gold_code(N)

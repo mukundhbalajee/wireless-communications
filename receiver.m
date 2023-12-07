@@ -140,6 +140,7 @@ zk10 = frame10(1:upsampling_rate:len);
 
 zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10];%; zk11; zk12; zk13; zk14; zk15; zk16; zk17; zk18; zk19; zk20];
 zk = transpose(zk);
+zk_temp = zk;
 
 %% Equalization - MMSE-LE
 if(MMSE)
@@ -243,23 +244,20 @@ BER1 = length(find(user1(start:stop) ~= rx1(start:stop)))/(stop-start)
 BER2 = length(find(rx2(start:stop) ~= user2(start:stop)))/(stop-start)
 
 %% Plotting
-received_image = [rx_bits];
-received_image = reshape(received_image, dims(1), dims(2));
 
 figure(10); 
 
-subplot(2,1,1);
-hold on;
-imshow(image);  title("original")
-hold off;
+subplot(2,2,1);
+imshow(user1);  title("User 1 TX");
 
-received_image = [rx_bits];
-received_image = reshape(received_image, dims(1), dims(2));
+subplot(2,2,2);
+imshow(user2);  title("User 2 TX");
 
-subplot(2,1,2); 
-hold on;
-imshow(received_image); title("received")
-hold off;
+subplot(2,2,3);
+imshow(rx1);  title("User 1 RX");
+
+subplot(2,2,4);
+imshow(rx2);  title("User 2 RX");
 
 
 %% Transmitted signal - x_base(t)
@@ -365,7 +363,7 @@ title('Frequency Domain Plot for Pulse')
 axis tight
 
 %% Sampler Output - z_{k}
-len = length(zk);
+len = length(zk_temp);
 samples=[0:len-1];
 
 figure(4)
@@ -374,8 +372,8 @@ clf
 
 % Plot time domain signal
 hold on;
-plot(samples, real(zk))
-plot(samples, imag(zk))
+plot(samples, real(zk_temp))
+plot(samples, imag(zk_temp))
 hold off;
 title('Sampler Output (z_{k})')
 xlabel('Samples')
@@ -405,7 +403,7 @@ axis tight
 
 %% Equalizer sample output - v_k
 
-vk = zk;
+vk = zk_eq;
 len = length(vk);
 samples=[0:len-1];
 
