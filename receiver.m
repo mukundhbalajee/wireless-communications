@@ -178,13 +178,18 @@ end
 %% Rake Receiver
 
 zk_rake = rake_receiver(zk, gc1, 32, 2, upsampling_rate);
-zk = zk_rake;
+rake1 = zk_rake(1,:);
+rake1 = reshape(rake1, 32, length(rake1)/32);
+rake1 = rake1(1,:);
+rake2 = zk_rake(2,:);
+rake2 = reshape(rake2, 32, length(rake2)/32);
+rake2 = rake2(1,:);
+zk = [rake1,rake2];
 
 %% Guessing
-d = sqrt(2)/3;
-options = [0.5+0.5j, -1.5+0.5j
-           0.5-1.5j, -1.5-1.5j].*d;
-
+d = 2;
+options = [0.5+0.5j, -0.5-0.5j
+           0.5-0.5j, -0.5+0.5j].*d;
 
 received_pts = zeros(1, length(zk)); %QAM
 
@@ -205,12 +210,24 @@ for i = 1:length(zk)
     received_pts(i) = min_pt-1;
 end
 
+rx1 = received_pts(1:50);
+rx2 = received_pts(51:100);
+
 %% QAM to Bits
-rx_bits = dec2bin(received_pts, 2);
+rx_bits = rx1;
+rx_bits = dec2bin(rx_bits, 2);
 rx_bits = split(char(strjoin(string(rx_bits),'')),'');
 rx_bits = rx_bits(2:end-1);
 rx_bits = str2num(cell2mat(rx_bits));
-rx_bits = rx_bits';
+rx1 = rx_bits';
+
+rx_bits = rx2;
+rx_bits = dec2bin(rx_bits, 2);
+rx_bits = split(char(strjoin(string(rx_bits),'')),'');
+rx_bits = rx_bits(2:end-1);
+rx_bits = str2num(cell2mat(rx_bits));
+rx2 = rx_bits';
+
 
 %% Error checking and BER calculation
 image = imread('images/shannon1440.bmp');
@@ -221,9 +238,9 @@ user1 = im(1:100);
 user2 = im(101:200);
 
 start = 1;
-stop = 100;
-BER1 = length(find(rx_bits(start:stop) ~= user1(start:stop)))/(stop-start)
-BER2 = length(find(rx_bits(start:stop) ~= user2(start:stop)))/(stop-start)
+stop = length(user1);
+BER1 = length(find(user1(start:stop) ~= rx1(start:stop)))/(stop-start)
+BER2 = length(find(rx2(start:stop) ~= user2(start:stop)))/(stop-start)
 
 %% Plotting
 
@@ -411,7 +428,7 @@ axis tight
 
 figure(8)
 hold on;
-scatter(real(zk), imag(zk));
+scatter(real(rake2), imag(rake2));
 scatter(reshape(real(options), 1, 4), reshape(imag(options), 1, 4), 'LineWidth', 2);
 xlabel('I'); ylabel('Q')
 hold off;
@@ -452,9 +469,9 @@ function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, nu
         
         % Despread the signals using Gold codes
         despread_rake_finger = zeros(num_fingers, length(received_signal));
-        for finger = 1:2
+        for finger = 1:num_fingers
             repeated_gold_code = repmat(gold_codes(user, :), 1, ceil(length(received_signal) / length(gold_codes(user, :))));
-            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code / spreading_gain);
+            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code);
         end
         
         % Combine the despread signals from all fingers
