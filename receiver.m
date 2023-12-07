@@ -11,7 +11,7 @@ MMSE = true;
 
 preamble = qam_preamble;
 frame_sync = qam_frame_sync;
-
+L = 32;
 sync_len = 20; % microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
@@ -144,8 +144,8 @@ zk = transpose(zk);
 %% Equalization - MMSE-LE
 if(MMSE)
     disp("MMSE-LE EQ");
-    filter_length = 13;
-    mu = .1;
+    filter_length = 6;
+    mu = .2;
     eq_weights = zeros(filter_length, num_frames);
     
     %Train filter based on each received chunk
@@ -177,14 +177,14 @@ end
 
 %% Rake Receiver
 
-zk_rake = rake_receiver(zk, gc1, 32, 2, upsampling_rate);
+zk_rake = rake_receiver(zk, gc1, 32, 3, upsampling_rate);
 rake1 = zk_rake(1,:);
 rake1 = reshape(rake1, 32, length(rake1)/32);
 rake1 = sum(rake1, 1);
 rake2 = zk_rake(2,:);
 rake2 = reshape(rake2, 32, length(rake2)/32);
 rake2 = sum(rake2, 1);
-zk = [rake1,rake2];
+zk = [rake1,rake2]./L;
 
 %% Guessing
 d = 2;
@@ -243,7 +243,6 @@ BER1 = length(find(user1(start:stop) ~= rx1(start:stop)))/(stop-start)
 BER2 = length(find(rx2(start:stop) ~= user2(start:stop)))/(stop-start)
 
 %% Plotting
-
 received_image = [rx_bits];
 received_image = reshape(received_image, dims(1), dims(2));
 
@@ -462,8 +461,7 @@ function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, nu
         rake_fingers = zeros(num_fingers, length(received_signal));
         % Generate delayed versions of the received signal for each finger
         for finger = 1:num_fingers
-            delay = finger-1;
-            delayed_signal = [received_signal(length(received_signal) - delay*upsampling_rate + 1:length(received_signal)); received_signal(1:length(received_signal) - delay*upsampling_rate)];
+            delayed_signal = [received_signal(finger:length(received_signal)); received_signal(2:finger)];
             rake_fingers(finger, :) = delayed_signal;
         end
         
@@ -471,7 +469,7 @@ function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, nu
         despread_rake_finger = zeros(num_fingers, length(received_signal));
         for finger = 1:num_fingers
             repeated_gold_code = repmat(gold_codes(user, :), 1, ceil(length(received_signal) / length(gold_codes(user, :))));
-            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code)./32;
+            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code);
         end
         
         % Combine the despread signals from all fingers
