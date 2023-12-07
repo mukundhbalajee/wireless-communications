@@ -180,10 +180,10 @@ end
 zk_rake = rake_receiver(zk, gc1, 32, 2, upsampling_rate);
 rake1 = zk_rake(1,:);
 rake1 = reshape(rake1, 32, length(rake1)/32);
-rake1 = rake1(1,:);
+rake1 = sum(rake1, 1);
 rake2 = zk_rake(2,:);
 rake2 = reshape(rake2, 32, length(rake2)/32);
-rake2 = rake2(1,:);
+rake2 = sum(rake2, 1);
 zk = [rake1,rake2];
 
 %% Guessing
@@ -428,7 +428,7 @@ axis tight
 
 figure(8)
 hold on;
-scatter(real(rake2), imag(rake2));
+scatter(real(zk), imag(zk));
 scatter(reshape(real(options), 1, 4), reshape(imag(options), 1, 4), 'LineWidth', 2);
 xlabel('I'); ylabel('Q')
 hold off;
@@ -471,7 +471,7 @@ function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, nu
         despread_rake_finger = zeros(num_fingers, length(received_signal));
         for finger = 1:num_fingers
             repeated_gold_code = repmat(gold_codes(user, :), 1, ceil(length(received_signal) / length(gold_codes(user, :))));
-            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code);
+            despread_rake_finger(finger, :) = rake_fingers(finger, :) .* (repeated_gold_code)./32;
         end
         
         % Combine the despread signals from all fingers
