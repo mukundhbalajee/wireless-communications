@@ -137,6 +137,7 @@ zk19 = frame19(1:upsampling_rate:len);
 zk20 = frame20(1:upsampling_rate:len);
 
 zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10; zk11; zk12; zk13; zk14; zk15; zk16; zk17; zk18; zk19; zk20];
+zk_temp = zk;
 zk = transpose(zk);
 
 %% Equalization - MMSE-LE
@@ -341,7 +342,7 @@ title('Frequency Domain Plot for Pulse')
 axis tight
 
 %% Sampler Output - z_{k}
-len = length(zk);
+len = length(zk_temp);
 samples=[0:len-1];
 
 figure(4)
@@ -350,8 +351,8 @@ clf
 
 % Plot time domain signal
 hold on;
-plot(samples, real(zk))
-plot(samples, imag(zk))
+plot(samples, real(zk_temp))
+plot(samples, imag(zk_temp))
 hold off;
 title('Sampler Output (z_{k})')
 xlabel('Samples')
