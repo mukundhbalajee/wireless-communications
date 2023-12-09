@@ -39,6 +39,7 @@ im = double(reshape(image, 1, dims(1)*dims(2)));
 user1 = im(1:100);
 user2 = im(101:200);
 n_frames = 10;
+
 im = reshape(user1, length(user1)/n_frames, n_frames);
 bits1 = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
@@ -48,6 +49,7 @@ im = reshape(user2, length(user2)/n_frames, n_frames);
 bits2 = horzcat(preamble, im(:,1)', frame_sync, im(:,2)', frame_sync, im(:,3)', ...
     frame_sync, im(:,4)', frame_sync, im(:,5)', frame_sync, im(:,6)', frame_sync, ...
     im(:,7)', frame_sync, im(:,8)', frame_sync, im(:,9)', frame_sync, im(:,10)');
+
 bits1 = string(reshape(bits1, 2, length(bits1)/2));
 bits2 = string(reshape(bits2, 2, length(bits2)/2));
 
@@ -65,7 +67,6 @@ d = 2;
 options = [0.5+0.5j, -0.5-0.5j
            0.5-0.5j, -0.5+0.5j].*d;
 
-%uk
 qam_points1 = options(qam_bits1);
 qam_points2 = options(qam_bits2);
 
@@ -75,10 +76,11 @@ qam_points2 = repmat(qam_points2, L, 1);
 qam_points1 = reshape(qam_points1, 1, L*length(bits1));
 qam_points2 = reshape(qam_points2, 1, L*length(bits2));
 
-
+% Assign unique Gold Codes for each user
 gc2 = gc1(2, :);
 gc1 = gc1(1, :);
 
+%Spread signal based on assigned Gold Code
 spread1 = spread_signal_gold(qam_points1, gc1, 1);
 spread2 = spread_signal_gold(qam_points2, gc2, 1);
 
@@ -202,8 +204,7 @@ function gold_codes = generate_gold_code(N)
         for i = 1:N
             codes(i) = xor(m_seq1(i), m_seq2(i));
         end
-        size(gold_codes);
-        size(codes);
+        
         gold_codes(user, :) = codes;
     end
     

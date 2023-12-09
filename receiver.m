@@ -5,14 +5,12 @@ load qam_pre.mat
 load qam_fsync.mat
 load gold_codes.mat
 
-% receivedsignal = transmitsignal;
-
 MMSE = true;
 
 preamble = qam_preamble;
 frame_sync = qam_frame_sync;
-L = 32;
-sync_len = 20; % microseconds
+L = 32; %Spreading Gain
+sync_len = 20;
 fs = 200; %MHz
 upsampling_rate = 12;
 pulse = rcosdesign(0.3, 40, upsampling_rate, 'sqrt');
@@ -25,9 +23,9 @@ zt = conv(wt, receivedsignal);
 
 num_frames = 10;
 
-sig_to_find = preamble;  %PUT SIGNAL TO FIND HERE
+sig_to_find = preamble;
 
-xt_conj = conj(sig_to_find); 
+xt_conj = conj(sig_to_find);
 
 tau = length(zt);
 sums = zeros(1, tau);
@@ -40,8 +38,7 @@ for i = 1:tau-p*upsampling_rate
     end
 end
 
-[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
-maxes = maxk(pks, num_frames);
+[~,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
 
 timing_offset = inds(1);
 zt_timing = zt(timing_offset:end);
@@ -84,7 +81,7 @@ for i = 1:num_frames-1
 end
 starts = locs + upsampling_rate*(length(frame_sync)+1);
 
-%% Equalization
+%% One-Tap Equalization
 
 if(~MMSE)
     disp("One Tap EQ");
@@ -105,18 +102,9 @@ frame7 = zt_inphase_timing(starts(7): starts(8)-upsampling_rate*(length(frame_sy
 frame8 = zt_inphase_timing(starts(8): starts(9)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(8)+phases(9)));
 frame9 = zt_inphase_timing(starts(9): starts(10)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(9)+phases(10)));
 frame10 = zt_inphase_timing(starts(10): end).* exp(-j*phases(9)+0.5*(phases(10)-phases(9)));
-% frame11 = zt_inphase_timing(starts(11): starts(12)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(11)+phases(12)));
-% frame12 = zt_inphase_timing(starts(12): starts(13)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(12)+phases(13)));
-% frame13 = zt_inphase_timing(starts(13): starts(14)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(13)+phases(14)));
-% frame14 = zt_inphase_timing(starts(14): starts(15)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(14)+phases(15)));
-% frame15 = zt_inphase_timing(starts(15): starts(16)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(15)+phases(16)));
-% frame16 = zt_inphase_timing(starts(16): starts(17)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(16)+phases(17)));
-% frame17 = zt_inphase_timing(starts(17): starts(18)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(17)+phases(18)));
-% frame18 = zt_inphase_timing(starts(18): starts(19)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(18)+phases(19)));
-% frame19 = zt_inphase_timing(starts(19): starts(20)-upsampling_rate*(length(frame_sync))).* exp(-j*0.5*(phases(19)+phases(20)));
-% frame20 = zt_inphase_timing(starts(20): end).* exp(-j*phases(20)+0.5*(phases(20)-phases(19)));
 
 len = upsampling_rate*floor(length(frame1)/upsampling_rate);
+
 zk1 = frame1(1:upsampling_rate:len);
 zk2 = frame2(1:upsampling_rate:len);
 zk3 = frame3(1:upsampling_rate:len);
@@ -127,16 +115,6 @@ zk7 = frame7(1:upsampling_rate:len);
 zk8 = frame8(1:upsampling_rate:len);
 zk9 = frame9(1:upsampling_rate:len);
 zk10 = frame10(1:upsampling_rate:len);
-% zk11 = frame11(1:upsampling_rate:len);
-% zk12 = frame12(1:upsampling_rate:len);
-% zk13 = frame13(1:upsampling_rate:len);
-% zk14 = frame14(1:upsampling_rate:len);
-% zk15 = frame15(1:upsampling_rate:len);
-% zk16 = frame16(1:upsampling_rate:len);
-% zk17 = frame17(1:upsampling_rate:len);
-% zk18 = frame18(1:upsampling_rate:len);
-% zk19 = frame19(1:upsampling_rate:len);
-% zk20 = frame20(1:upsampling_rate:len);
 
 zk = [zk1; zk2; zk3; zk4; zk5; zk6; zk7; zk8; zk9; zk10];%; zk11; zk12; zk13; zk14; zk15; zk16; zk17; zk18; zk19; zk20];
 zk = transpose(zk);
@@ -178,7 +156,7 @@ end
 
 %% Rake Receiver
 
-zk_rake = rake_receiver(zk, gc1, 32, 3, upsampling_rate);
+zk_rake = rake_receiver(zk, gc1, 3);
 rake1 = zk_rake(1,:);
 rake1 = reshape(rake1, 32, length(rake1)/32);
 rake1 = sum(rake1, 1);
@@ -450,10 +428,9 @@ end
 %received_signal - signal for each individual user
 %gold_codes - same ones generated in transmitter.m
 %spreading_gain - given as 32dB
-%N - length of the gold code
-%num_bits - number of bits transmitted by each user
-%num_fingers - number of fingers for each receiver
-function zk_rake = rake_receiver(received_signal, gold_codes, spreading_gain, num_fingers, upsampling_rate)
+%num_fingers - number of fingers for each rake
+
+function zk_rake = rake_receiver(received_signal, gold_codes, num_fingers)
     zk_rake = zeros(2, length(received_signal));
     for user = 1:2
         rake_fingers = zeros(num_fingers, length(received_signal));
