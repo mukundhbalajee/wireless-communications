@@ -10,20 +10,19 @@ preamble = qam_preamble;
 frame_sync = qam_frame_sync;
 
 sync_len = 12;
-% microseconds
 fs = 200; %MHz
 upsampling_rate = 12;
 pulse = rcosdesign(0.3, 30, upsampling_rate, 'sqrt');
 
 %% Demodulate
-wt = fliplr(pulse); %probably unnecessary
+wt = fliplr(pulse);
 zt = conv(wt, receivedsignal);
 
 %% Timing Synchronization
 
 num_frames = 20;
 
-sig_to_find = preamble;  %PUT SIGNAL TO FIND HERE
+sig_to_find = preamble;
 
 xt_conj = conj(sig_to_find); 
 
@@ -38,8 +37,7 @@ for i = 1:tau-p*upsampling_rate
     end
 end
 
-[pks,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
-maxes = maxk(pks, num_frames);
+[~,inds] = findpeaks(abs(sums), 'MinPeakProminence', 5);
 
 timing_offset = inds(1);
 zt_timing = zt(timing_offset:end);
@@ -49,7 +47,7 @@ zt_inphase_timing_plot = zt_inphase_timing;
 
 %% Frame Synchronization
 
-sig_to_find = frame_sync;  %PUT SIGNAL TO FIND HERE
+sig_to_find = frame_sync;
 xt_conj = conj(sig_to_find);
 
 tau = length(zt_inphase_timing);
@@ -82,7 +80,7 @@ for i = 1:num_frames-1
 end
 starts = locs + upsampling_rate*(length(frame_sync)+1);
 
-%% Equalization
+%% One-Tap Equalization
 
 if(~MMSE)
     disp("One Tap EQ");
@@ -115,6 +113,7 @@ frame19 = zt_inphase_timing(starts(19): starts(20)-upsampling_rate*(length(frame
 frame20 = zt_inphase_timing(starts(20): end).* exp(-j*phases(20)+0.5*(phases(20)-phases(19)));
 
 len = upsampling_rate*floor(length(frame1)/upsampling_rate);
+
 zk1 = frame1(1:upsampling_rate:len);
 zk2 = frame2(1:upsampling_rate:len);
 zk3 = frame3(1:upsampling_rate:len);
@@ -219,9 +218,6 @@ stop = length(bits)/20*20;
 BER = length(find(rx_bits(start:stop) ~= bits(start:stop)))/(stop-start)
 
 %% Plotting
-
-received_image = [rx_bits];
-received_image = reshape(received_image, dims(1), dims(2));
 
 figure(10); 
 
